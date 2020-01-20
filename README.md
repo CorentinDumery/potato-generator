@@ -1,3 +1,3 @@
 # PotatoGenerator
 
-![My planet](/planet.png)
+![My planet](https://github.com/CorentinDumery/PotatoGenerator/blob/master/planet.PNG)
