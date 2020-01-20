@@ -59,7 +59,7 @@ class Vertex:
         return sqrt(self.x**2 +self.y**2 +self.z**2)
     
     
-def genSph(n=81,m=64):
+def genPotato(n=81,m=64):
     res = []
     scale = 10
     p0 = [0,0,1*scale]
@@ -110,3 +110,6 @@ def offsetStl(stl,x,y,z):
             newt.append([l[0]+x,l[1]+y,l[2]+z])
         res.append(newt)
     return res
+
+genPotato()
+print("Potato generated in out.stl")
