@@ -7,6 +7,8 @@
 #include <random>
 #include <math.h>
 #include <igl/remove_duplicate_vertices.h>
+#include <igl/per_vertex_normals.h>
+#include <igl/embree/ambient_occlusion.h>
 
 Potato::Potato()
 {
@@ -17,7 +19,7 @@ Potato::Potato()
     F_.resize(2 * (res - 1) * res, 3);
     Eigen::RowVector3d center = Eigen::RowVector3d(0, 0, 0);
 
-    // TODO: improve vertices distribution on initial sphere
+    // TODO: improve vertices distribution on initial sphere using Fibonacci algorithm
     for (int j = 0; j < res; j++)
     {
         double z = center(2) + radius * cos(M_PI * (double)j / (double(res - 1)));
@@ -47,24 +49,25 @@ Potato::Potato()
     igl::remove_duplicate_vertices(V_, F_, 1e-7, new_V, SVI, SVJ, new_F);
     V_ = new_V;
     F_ = new_F;
+    computeNormals();
+    //computeAO(); //TODO find out why this line doesn't work
 }
 
 void Potato::setRandomColors()
 {
-    colors_.resize(V_.rows(), 3);
+    base_color_.resize(V_.rows(), 3);
     for (int i = 0; i < V_.rows(); i++)
     {
-        colors_.row(i) = Eigen::RowVector3d(1.0, 1.0, 0.0);
+        base_color_.row(i) = Eigen::RowVector3d(1.0, 1.0, 0.0);
         if (std::rand() % 20 == 0)
         {
-            colors_.row(i) = Eigen::RowVector3d(0.2, 0.1, 0.0);
+            base_color_.row(i) = Eigen::RowVector3d(0.2, 0.1, 0.0);
         }
     }
 }
 
 void Potato::addOscillation()
 {
-
     Eigen::RowVector3d direction = Eigen::RowVector3d::Random();
     std::uniform_real_distribution<double> unif(0, 1);
     std::default_random_engine re;
@@ -73,8 +76,7 @@ void Potato::addOscillation()
     double ampl = unif(re) * 2;
     double freq = unif(re) / ampl;
     double r = 0.1;
-    // for all vertices
-    //  v.dot(direction)
+
     for (int i = 0; i < V_.rows(); i++)
     {
         Eigen::RowVector3d v = V_.row(i);
@@ -118,4 +120,28 @@ void Potato::scale(double scalex, double scaley, double scalez)
     V_.col(0) *= scalex;
     V_.col(1) *= scaley;
     V_.col(2) *= scalez;
+}
+
+Eigen::MatrixXd Potato::getColors() const
+{
+    Eigen::MatrixXd C = Eigen::MatrixXd(V_.rows(), 3);
+    for (unsigned i = 0; i < C.rows(); ++i)
+    {
+        C(i, 0) = 1 - ao_factor_ * ambient_occlusion_(i);
+        C(i, 1) = 1 - ao_factor_ * ambient_occlusion_(i);
+        C(i, 2) = 1 - ao_factor_ * ambient_occlusion_(i);
+    }
+    return C;
+}
+
+void Potato::setAOFactor(double ao_factor){
+    ao_factor_ = ao_factor;
+}
+
+void Potato::computeNormals(){
+    igl::per_vertex_normals(V_, F_, N_);
+}
+
+void Potato::computeAO(){
+    igl::embree::ambient_occlusion(V_, F_, V_, N_, 500, ambient_occlusion_);
 }

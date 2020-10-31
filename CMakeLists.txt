@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.1)
 project(potato)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+add_definitions(-DIGL_VIEWER_VIEWER_QUIET)
 
 add_subdirectory(external/libigl)
 

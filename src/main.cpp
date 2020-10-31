@@ -3,14 +3,12 @@
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/png/readPNG.h>
-#include <igl/per_vertex_normals.h>
-#include <igl/embree/ambient_occlusion.h>
 #include <imgui.h>
 
 #include "potato.h"
 
+
 /* TODO
-- update AO when necessary, make it part of Potato class
 - potato keeping track of its perturbations
 - vertices on the potato correspond to vertices on the initial sphere
 - Move along normal instead ?
@@ -19,21 +17,10 @@
 - des sliders pour gérer high/low frequences, et une random seed, et 'Generate' qui change juste la seed
 */
 
-bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int modifier)
-{
-    if (key == '1')
-    {
-    }
-    else if (key == '2')
-    {
-    }
-    return false;
-}
-
 int main(int argc, char *argv[])
 {
     Potato potato = Potato();
-    potato.setRandomColors();
+
     for (int i = 0; i < 100; i++)
     {
         potato.addOscillation();
@@ -43,28 +30,16 @@ int main(int argc, char *argv[])
         potato.smooth();
     }
     potato.scale(1.0, 1.5, 0.8);
+    potato.computeAO();
 
     igl::opengl::glfw::Viewer viewer;
     viewer.data().set_mesh(potato.getV(), potato.getF());
-    //viewer.data().set_colors(potato.getColors());
     Eigen::MatrixXd V = potato.getV();
     std::cout << "Vertices matrix size: " << V.rows() << "x" << V.cols() << std::endl;
     Eigen::MatrixXi F = potato.getF();
 
-    double ao_factor = 1.3;
-
-    Eigen::VectorXd AO;
-    Eigen::MatrixXd N;
-    igl::per_vertex_normals(potato.getV(), potato.getF(), N);
-    igl::embree::ambient_occlusion(potato.getV(), potato.getF(), potato.getV(), N, 500, AO);
-    Eigen::MatrixXd C = Eigen::MatrixXd(V.rows(), 3);
-    for (unsigned i = 0; i < C.rows(); ++i)
-    {
-        C(i, 0) = 1 - ao_factor * AO(i); //std::min<double>(AO(i)+0.2,1);
-        C(i, 1) = 1 - ao_factor * AO(i); //std::min<double>(AO(i)+0.2,1);
-        C(i, 2) = 1 - ao_factor * AO(i); //std::min<double>(AO(i)+0.2,1);
-    }
-    viewer.data().set_colors(C);
+    potato.setAOFactor(1.3);
+    viewer.data().set_colors(potato.getColors());
 
     igl::opengl::glfw::imgui::ImGuiMenu menu;
     menu.callback_draw_viewer_window = []() {};
@@ -80,6 +55,7 @@ int main(int argc, char *argv[])
 
     float light_f;
     uint continuous_rotation = 0;
+    float ao_factor;
 
     menu.callback_draw_custom_window = [&]() {
         bool show = true;
@@ -92,10 +68,15 @@ int main(int argc, char *argv[])
             ImGui::SetNextWindowSize(ImVec2(150, 600), ImGuiCond_FirstUseEver);
             if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                if (ImGui::SliderFloat("Shininess", &viewer.data().shininess, 0.0f, 10.0f, "%.3f"))
+                if (ImGui::SliderFloat("Ambient Occlusion", &ao_factor, 0.1f, 10.0f, "%.3f"))
+                {
+                    potato.setAOFactor(ao_factor);
+                    viewer.data().set_colors(potato.getColors());
+                }
+                if (ImGui::SliderFloat("Shininess", &viewer.data().shininess, 0.1f, 10.0f, "%.3f"))
                 {
                 }
-                if (ImGui::SliderFloat("Light", &viewer.core().lighting_factor, 0.0f, 5.0f, "%.3f"))
+                if (ImGui::SliderFloat("Lighting", &viewer.core().lighting_factor, 0.0f, 5.0f, "%.3f"))
                 {
                 }
             }
@@ -113,7 +94,7 @@ int main(int argc, char *argv[])
                     viewer.data().set_mesh(potato.getV(), potato.getF());
                 }
                 ImGui::SameLine(0, p);
-                if (ImGui::Button("Add 10", ImVec2((w - p) / 2.f, 0)))
+                if (ImGui::Button("Perturbation", ImVec2((w - p) / 2.f, 0)))
                 {
                     for (int i = 0; i < 10; i++)
                     {
@@ -122,9 +103,11 @@ int main(int argc, char *argv[])
                     viewer.data().set_mesh(potato.getV(), potato.getF());
                 }
             }
+            make_checkbox("Show texture", viewer.data().show_texture);
             make_checkbox("Show lines", viewer.data().show_lines);
             make_checkbox("Show faces", viewer.data().show_faces);
             make_checkbox("Rotate", continuous_rotation);
+            
             ImGui::End();
         }
     };
@@ -157,7 +140,6 @@ int main(int argc, char *argv[])
     viewer.data().show_texture = true;
     viewer.data().show_lines = 0u;
     viewer.core().orthographic = false;
-    viewer.callback_key_down = &key_down;
     viewer.data().set_face_based(0u);
     viewer.core().is_animating = true;
     viewer.launch();
