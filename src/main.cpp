@@ -3,16 +3,16 @@
 #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
 #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
 #include <igl/png/readPNG.h>
+#include <igl/file_dialog_save.h>
+#include <igl/writeOFF.h>
 #include <imgui.h>
 
 #include "potato.h"
-
 
 /* TODO
 - potato keeping track of its perturbations
 - vertices on the potato correspond to vertices on the initial sphere
 - Move along normal instead ?
-- override Viewer::key_pressed
 - use custom shader
 - des sliders pour gérer high/low frequences, et une random seed, et 'Generate' qui change juste la seed
 */
@@ -102,12 +102,19 @@ int main(int argc, char *argv[])
                     }
                     viewer.data().set_mesh(potato.getV(), potato.getF());
                 }
+
+                make_checkbox("Show texture", viewer.data().show_texture);
+                make_checkbox("Show lines", viewer.data().show_lines);
+                make_checkbox("Show faces", viewer.data().show_faces);
+                make_checkbox("Rotate", continuous_rotation);
+
+                if (ImGui::Button("Save potato", ImVec2((w - p), 0)))
+                {
+                    std::string filename = igl::file_dialog_save();
+                    igl::writeOFF("filename", potato.getV(), potato.getF());
+                }
             }
-            make_checkbox("Show texture", viewer.data().show_texture);
-            make_checkbox("Show lines", viewer.data().show_lines);
-            make_checkbox("Show faces", viewer.data().show_faces);
-            make_checkbox("Rotate", continuous_rotation);
-            
+
             ImGui::End();
         }
     };
