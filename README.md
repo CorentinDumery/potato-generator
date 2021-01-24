@@ -18,4 +18,6 @@ make potato
 ./potato
 ```
 
+You may need to install a BLAS library if you do not already have one (e.g. `sudo apt install libopenblas-dev`).
+
 
