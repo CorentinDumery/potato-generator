@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     {
         potato.addOscillation();
     }
+
     for (int i = 0; i < 3; i++)
     {
         potato.smooth();
@@ -60,25 +61,49 @@ int main(int argc, char *argv[])
     menu.callback_draw_custom_window = [&]() {
         bool show = true;
         ImGui::SetNextWindowSize(ImVec2(300, 400));
-        if (ImGui::Begin("Potato"))
-        {
+        if (ImGui::Begin("Potato")) {
             ImGui::SetClipboardText("Potato");
             ImGui::SetNextWindowPos(ImVec2(0.f * menu.menu_scaling(), 5),
                                     ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(150, 600), ImGuiCond_FirstUseEver);
-            if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen))
-            {
-                if (ImGui::SliderFloat("Ambient Occlusion", &ao_factor, 0.1f, 10.0f, "%.3f"))
-                {
-                    potato.setAOFactor(ao_factor);
-                    viewer.data().set_colors(potato.getColors());
+            if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
+                const char* items[] = { "Potato", "Yellow matcap", "Matcap potato"};
+                static int item_current = 0;
+                if (ImGui::Combo("Texturing", &item_current, items, IM_ARRAYSIZE(items))){
+
+                    std::vector<std::string> textures = {"potato.png", "yellow_matcap.png", "potato.png"};
+
+                    Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic> R, G, B, A;
+                    if (!igl::png::readPNG("../images/" + textures[item_current], R, G, B, A))
+                    {
+                        std::cout << "Error: couldn't read texture" << std::endl;
+                    }
+
+                    viewer.data().set_texture(R, G, B);
+
+                    if (item_current == 0){
+                        viewer.data().use_matcap = false;
+                    }
+                    else {
+                        viewer.data().use_matcap = true;
+                    }
                 }
-                if (ImGui::SliderFloat("Shininess", &viewer.data().shininess, 0.1f, 10.0f, "%.3f"))
-                {
+                
+                if (item_current == 0){
+                    if (ImGui::SliderFloat("Ambient Occlusion", &ao_factor, 0.1f, 10.0f, "%.3f"))
+                    {
+                        potato.setAOFactor(ao_factor);
+                        viewer.data().set_colors(potato.getColors());
+                    }
+                    if (ImGui::SliderFloat("Shininess", &viewer.data().shininess, 0.1f, 10.0f, "%.3f"))
+                    {
+                    }
+                    if (ImGui::SliderFloat("Lighting", &viewer.core().lighting_factor, 0.0f, 5.0f, "%.3f"))
+                    {
+                    }
+
                 }
-                if (ImGui::SliderFloat("Lighting", &viewer.core().lighting_factor, 0.0f, 5.0f, "%.3f"))
-                {
-                }
+                
             }
 
             if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen))
